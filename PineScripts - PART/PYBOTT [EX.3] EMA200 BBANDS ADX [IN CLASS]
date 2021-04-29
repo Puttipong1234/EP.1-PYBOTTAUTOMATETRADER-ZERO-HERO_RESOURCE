@@ -1,0 +1,114 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © PuttipongAutomateTrader
+
+//@version=4
+strategy("PYBOTT[EX.3] - EMA200 BBANDS ADX [IN CLASS]", overlay=true )
+
+// A. PLOT EMA 
+EMA200 = ema(close , 200)
+plot(EMA200 , "EMA200") // <-- {{plot_0}}
+// B. PLT BBANDS
+BBANDS_LENGTH = input(20, minval=1 , group = "BBANDS")
+BBANDS_MULT = input(2.0, minval=0.001, maxval=50, title="StdDev", group = "BBANDS")
+basis = sma(close, BBANDS_LENGTH)
+dev = BBANDS_MULT * stdev(close, BBANDS_LENGTH)
+BBANDS_UPPER = basis + dev
+BBANDS_LOWER = basis - dev
+
+// C. ADX PLOT
+ADX_LENGTH = input(14, title="ADX Smoothing" , group = "ADX")
+ADX_DILEN = input(14, title="DI Length" , group = "ADX")
+dirmov(len) =>
+	up = change(high)
+	down = -change(low)
+	plusDM = na(up) ? na : (up > down and up > 0 ? up : 0)
+	minusDM = na(down) ? na : (down > up and down > 0 ? down : 0)
+	truerange = rma(tr, len)
+	plus = fixnan(100 * rma(plusDM, len) / truerange)
+	minus = fixnan(100 * rma(minusDM, len) / truerange)
+	[plus, minus]
+adx(ADX_DILEN, ADX_LENGTH) =>
+	[plus, minus] = dirmov(ADX_DILEN)
+	sum = plus + minus
+	adx = 100 * rma(abs(plus - minus) / (sum == 0 ? 1 : sum), ADX_LENGTH)
+ADX_VALUE = adx(ADX_DILEN, ADX_LENGTH)  // <== adx value
+
+// D. CHECK SIGNALS
+// D.1 BREAK BBANDS?
+BBANDS_SIGNALS = close > BBANDS_UPPER ? 1 : close < BBANDS_LOWER ? 2 : 0
+EMA_SIGNALS = close > EMA200 ? 1 : close < EMA200 ? 2 : 0
+ADX_SIGNALS = ADX_VALUE > 25 ? 1 : 0 // 1 = entry position , 0 = do nothing
+SUMMARY_SIGNALS = "NONE"
+if BBANDS_SIGNALS == 1 and EMA_SIGNALS == 1 and ADX_SIGNALS == 1
+    SUMMARY_SIGNALS := "LONG"
+
+if BBANDS_SIGNALS == 2 and EMA_SIGNALS == 2 and ADX_SIGNALS == 1
+    SUMMARY_SIGNALS := "SHORT"
+
+// E. Calculate TP - SL
+ATR_MUL_TP = input(title = "ATR_MUL_TP" , defval = 6 , group = "ATR CONFIG")
+ATR_MUL_SL = input(title = "ATR_MUL_SL" , defval = 3 , group = "ATR CONFIG")
+ATR_LENGTH = input(title="ATR_LENGTH", defval=14, minval=1 , group = "ATR CONFIG")
+ATR_SMOOTHING = input(title="ATR_SMOOTHING", defval="RMA", options=["RMA", "SMA", "EMA", "WMA"] , group = "ATR CONFIG")
+ma_function(source, length) =>
+	if ATR_SMOOTHING == "RMA"
+		rma(source, length)
+	else
+		if ATR_SMOOTHING == "SMA"
+			sma(source, length)
+		else
+			if ATR_SMOOTHING == "EMA"
+				ema(source, length)
+			else
+				wma(source, length)
+
+ATR_VALUE = ma_function(tr(true), ATR_LENGTH)
+
+// F. POSITION ENTRY
+TP = 0.0
+SL = 0.0
+TP2 = 0.0
+
+TAKE_2TIME_PROFITS = input( defval = false , title = "TAKE_2TIME_PROFITS" , type = input.bool )
+
+
+if TAKE_2TIME_PROFITS
+    if SUMMARY_SIGNALS == "LONG"
+        TP := close + (ATR_VALUE * ATR_MUL_TP/2)
+        TP2 := close + (ATR_VALUE * ATR_MUL_TP)
+        SL := close - (ATR_VALUE * ATR_MUL_SL)
+        strategy.close_all(when=strategy.position_size < 0)
+        strategy.entry(id = "LONG" , long = true)
+        strategy.exit(id = "TP1 LONG" , from_entry = "LONG" , qty = strategy.position_size/2 , profit = TP , stop = SL)
+        strategy.exit(id = "TP2 LONG" , from_entry = "LONG" , qty = strategy.position_size , profit = TP , stop = SL)
+        //strategy.exit(id = "SL LONG" , from_entry = "LONG" , stop = SL)
+    
+    if SUMMARY_SIGNALS == "SHORT"
+        TP := close - (ATR_VALUE * ATR_MUL_TP/2)
+        TP2 := close - (ATR_VALUE * ATR_MUL_TP)
+        SL := close + (ATR_VALUE * ATR_MUL_SL)
+        strategy.close_all(when=strategy.position_size > 0)
+        strategy.entry(id = "SHORT" , long = false)
+        strategy.exit(id = "TP1 SHORT" , from_entry = "SHORT" , qty = strategy.position_size/2 , profit = TP , stop = SL)
+        strategy.exit(id = "TP2 SHORT" , from_entry = "SHORT" , qty = strategy.position_size ,profit = TP , stop = SL)
+        //strategy.exit(id = "SL SHORT" , from_entry = "SHORT" , stop = SL)
+else
+    if SUMMARY_SIGNALS == "LONG"
+        TP := close + (ATR_VALUE * ATR_MUL_TP)
+        SL := close - (ATR_VALUE * ATR_MUL_SL)
+        strategy.close_all(when=strategy.position_size < 0)
+        strategy.entry(id = "LONG" , long = true)
+        strategy.exit(id = "TP LONG" , from_entry = "LONG" , profit = TP )
+        strategy.exit(id = "SL LONG" , from_entry = "LONG" , stop = SL)
+    
+    if SUMMARY_SIGNALS == "SHORT"
+        TP := close - (ATR_VALUE * ATR_MUL_TP)
+        SL := close + (ATR_VALUE * ATR_MUL_SL)
+        strategy.close_all(when=strategy.position_size > 0)
+        strategy.entry(id = "SHORT" , long = false)
+        strategy.exit(id = "TP SHORT" , from_entry = "SHORT" , profit = TP)
+        strategy.exit(id = "SL SHORT" , from_entry = "SHORT" , stop = SL)
+
+
+
+
