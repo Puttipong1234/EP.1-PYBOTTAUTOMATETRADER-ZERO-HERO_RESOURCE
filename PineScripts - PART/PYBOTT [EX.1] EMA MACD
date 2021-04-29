@@ -1,0 +1,42 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © PuttipongAutomateTrader
+
+//@version=4
+study("PYBOTT [EXAMPLE 1]" , overlay = true)
+
+EMA200 = ema(close , 200)
+plot(EMA200 , "EMA200" , color = color.gray)
+
+[macdLine , signalLine , histLine] = macd(close,12,26,9)
+//plot(macdLine , color = color.blue)
+//plot(signalLine , color = color.orange)
+
+// ctrl + / to commend line
+// EMA_SIGNALS = "LONG"
+// if EMA200 > close
+//     EMA_SIGNALS := "SHORT"
+
+EMA_SIGNALS = EMA200 > close ? "SHORT" : "LONG"
+MACD_SIGNALS = crossover(macdLine,signalLine) ? "LONG" : crossunder(macdLine,signalLine) ? "SHORT" : "NOSIGNALS"
+
+SUMMARY_SIGNALS = 0 // 0 = no signals , 1 = LONG , 2 = SHORT
+
+if EMA_SIGNALS == "SHORT" and MACD_SIGNALS == "SHORT"
+    SUMMARY_SIGNALS := 2
+
+if EMA_SIGNALS == "LONG" and MACD_SIGNALS == "LONG"
+    SUMMARY_SIGNALS := 1
+
+//plotchar(SUMMARY_SIGNALS , "SUMMARY_SIGNALS")
+if SUMMARY_SIGNALS != 0
+    label.new(x = time , y = close , xloc = xloc.bar_time , yloc = SUMMARY_SIGNALS == 1 ? yloc.belowbar : yloc.abovebar , color = SUMMARY_SIGNALS == 1 ? color.green : color.red , style = SUMMARY_SIGNALS == 1 ? label.style_triangleup : label.style_triangledown , size = size.small)
+
+//alert condition , alert()
+if SUMMARY_SIGNALS == 0 
+    alert( message = "'POSITION TYPE' : 'NONE' , 'PRICE AT' : " + tostring(close) + ",'EMA_SIGNALS' : " + EMA_SIGNALS + ",'MACD_SIGNALS' : " + MACD_SIGNALS)
+
+if SUMMARY_SIGNALS == 1 
+    alert( message = "'POSITION TYPE' : 'LONG' , 'PRICE AT' : " + tostring(close) + ",'EMA_SIGNALS' : " + EMA_SIGNALS + ",'MACD_SIGNALS' : " + MACD_SIGNALS)
+
+if SUMMARY_SIGNALS == 2 
+    alert( message = "'POSITION TYPE' : 'SHORT' , 'PRICE AT' : " + tostring(close) + ",'EMA_SIGNALS' : " + EMA_SIGNALS + ",'MACD_SIGNALS' : " + MACD_SIGNALS)
