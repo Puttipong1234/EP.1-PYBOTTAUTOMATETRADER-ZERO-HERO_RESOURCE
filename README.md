@@ -8,3 +8,4 @@ PYBOTT-EP01
 * PYBOTT [EX.4] RSI DIVERGENCE DETECTOR
 * PYBOTT [EX.5] FIBONACCI ZIGZAG LEVELS (modified)
 
+![alt text](https://ibb.co/5hkL1L4)
