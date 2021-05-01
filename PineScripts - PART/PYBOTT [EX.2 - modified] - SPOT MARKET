@@ -1,0 +1,117 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © PuttipongAutomateTrader
+
+//@version=4
+strategy("PYBOTT [EX.2] STOCH-RSI EMA ATR" , overlay=true , default_qty_type = strategy.cash , currency = currency.USD , initial_capital = 100000 , commission_type = strategy.commission.percent,commission_value = 0.1)
+
+// A. all input variable
+EMA_SHORT = input( title = "EMA_SHORT" , type = input.integer , defval = 8 , group = "EMA CONFIG")
+EMA_MIDDLE = input( title = "EMA_MIDDLE" , type = input.integer , defval = 14 , group = "EMA CONFIG")
+EMA_LONG = input( title = "EMA_LONG" , type = input.integer , defval = 50 , group = "EMA CONFIG")
+
+RSI_LENGTH = input( title = "RSI_LENGTH" , type = input.integer , defval = 14 , group = "RSI CONFIG")
+STOCH_LENGTH = input(14, "Stochastic Length", minval=1 , group = "RSI CONFIG")
+SMOOTH_K = input(3, "SMOOTH_K", minval=1 , group = "RSI CONFIG")
+SMOOTH_D = input(3, "SMOOTH_D", minval=1 , group = "RSI CONFIG")
+
+
+ATR_LENGTH = input(title="ATR_LENGTH", defval=14, minval=1)
+ATR_SMOOTHING = input(title="ATR_SMOOTHING", defval="RMA", options=["RMA", "SMA", "EMA", "WMA"])
+ATR_MUL_SL = input( title = "ATR_MUL_SL" , type = input.integer , defval = 3 , group = "ATR CONFIG")
+ATR_MUL_TP = input( title = "ATR_MUL_TP" , type = input.integer , defval = 6 , group = "ATR CONFIG")
+
+// B. plot ema line
+EMA_SHORT_LINE = ema(close,EMA_SHORT)
+EMA_MIDDLE_LINE = ema(close,EMA_MIDDLE)
+EMA_LONG_LINE = ema(close,EMA_LONG)
+
+plot(EMA_SHORT_LINE , "EMA_SHORT_LINE" , color=color.red)
+plot(EMA_MIDDLE_LINE , "EMA_MIDDLE_LINE" , color=color.blue)
+plot(EMA_LONG_LINE , "EMA_LONG_LINE" , color=color.green)
+
+// C. create stoch rsi
+rsi1 = rsi(close, RSI_LENGTH)
+k = sma(stoch(rsi1, rsi1, rsi1, STOCH_LENGTH), SMOOTH_K)
+d = sma(k, SMOOTH_D)
+
+plotchar(k , "SMOOTH_K" , char= " ")
+plotchar(d , "SMOOTH_D" , char= " ")
+
+// D. create ATR 14
+
+ma_function(source, length) =>
+	if ATR_SMOOTHING == "RMA"
+		rma(source, length)
+	else
+		if ATR_SMOOTHING == "SMA"
+			sma(source, length)
+		else
+			if ATR_SMOOTHING == "EMA"
+				ema(source, length)
+			else
+				wma(source, length)
+
+// def func(args):
+//     code ....
+
+// () => {
+//     code .....
+// }
+
+ATR_VALUE = ma_function(tr(true),ATR_LENGTH)
+plotchar(ATR_VALUE , "ATR_VALUE" , char= " ")
+
+// E. Signals Detection
+// Wait ntil RSI STOCH crossup , crossdown
+RSI_SIGNALS = crossover(k,d) ? 1 : crossunder(k,d) ? 2 : 0 // 1 = long , 2 = short , 0 = none
+plotchar(RSI_SIGNALS , "RSI_SIGNALS" , char = " ")
+
+// E.1 consider EMA pattern
+// calculate ATR stoploss and take profits
+ATR_SL = 0.0
+ATR_TP = 0.0
+EMA_SIGNALS = 0
+if EMA_SHORT_LINE > EMA_MIDDLE_LINE and  EMA_MIDDLE_LINE > EMA_LONG_LINE
+    if close > EMA_SHORT_LINE
+        EMA_SIGNALS := 1
+        ATR_SL := close - (ATR_VALUE * ATR_MUL_SL)
+        ATR_TP := close + (ATR_VALUE * ATR_MUL_TP)
+    
+if EMA_SHORT_LINE < EMA_MIDDLE_LINE and  EMA_MIDDLE_LINE < EMA_LONG_LINE
+    if close < EMA_SHORT_LINE
+        EMA_SIGNALS := 2
+        ATR_SL := close + (ATR_VALUE * ATR_MUL_SL)
+        ATR_TP := close - (ATR_VALUE * ATR_MUL_TP)
+
+plotchar(EMA_SIGNALS , "EMA_SIGNALS" , char = " ")
+plotchar(ATR_SL , "ATR_SL" , char = " ")
+plotchar(ATR_TP , "ATR_TP" , char = " ")
+
+// F. Create Positions
+// F.1 LONG POSITION
+
+EACHLOTS = input( defval = 5 , title = "LOTS" , type = input.integer , group = "POSITION CONFIG" )
+LEVERAGE = input( defval = 1 , title = "Leverage" , type = input.integer , group = "POSITION CONFIG"  )
+
+CAL_POSITION_SIZE = (strategy.equity/EACHLOTS) * LEVERAGE
+plotchar(CAL_POSITION_SIZE , "CAL_POSITION_SIZE")
+CONTRACT_SIZE = round(CAL_POSITION_SIZE/close,3)
+plotchar(CONTRACT_SIZE , "CONTRACT_SIZE")
+
+SUMMARY_SIGNALS = RSI_SIGNALS == 1 and EMA_SIGNALS == 1 ? "LONG" : RSI_SIGNALS == 2 and EMA_SIGNALS == 2 ? "SHORT" : "NONE"
+if (SUMMARY_SIGNALS == "LONG")
+    strategy.close("SHORT")
+    strategy.entry(id="LONG",long=true,qty= CONTRACT_SIZE)
+    strategy.exit(id="EX. LONG",from_entry = "LONG" , profit = ATR_TP , stop = ATR_SL)
+    // strategy.exit(id="SL LONG",from_entry = "LONG" , stop = ATR_SL)
+
+// F.2 SHORT POSITION
+if (SUMMARY_SIGNALS == "SHORT")
+    strategy.close("LONG")
+    // strategy.entry(id="SHORT",long=false,qty= CONTRACT_SIZE)
+    // strategy.exit(id="EX SHORT",from_entry = "SHORT" , profit = ATR_TP , stop = ATR_SL )
+
+
+
+
+
