@@ -80,7 +80,7 @@ if TAKE_2TIME_PROFITS
         strategy.close_all(when=strategy.position_size < 0)
         strategy.entry(id = "LONG" , long = true)
         strategy.exit(id = "TP1 LONG" , from_entry = "LONG" , qty = strategy.position_size/2 , profit = TP , stop = SL)
-        strategy.exit(id = "TP2 LONG" , from_entry = "LONG" , qty = strategy.position_size , profit = TP , stop = SL)
+        strategy.exit(id = "TP2 LONG" , from_entry = "LONG" , qty = strategy.position_size , profit = TP2 , stop = SL)
         //strategy.exit(id = "SL LONG" , from_entry = "LONG" , stop = SL)
     
     if SUMMARY_SIGNALS == "SHORT"
@@ -90,7 +90,7 @@ if TAKE_2TIME_PROFITS
         strategy.close_all(when=strategy.position_size > 0)
         strategy.entry(id = "SHORT" , long = false)
         strategy.exit(id = "TP1 SHORT" , from_entry = "SHORT" , qty = strategy.position_size/2 , profit = TP , stop = SL)
-        strategy.exit(id = "TP2 SHORT" , from_entry = "SHORT" , qty = strategy.position_size ,profit = TP , stop = SL)
+        strategy.exit(id = "TP2 SHORT" , from_entry = "SHORT" , qty = strategy.position_size ,profit = TP2 , stop = SL)
         //strategy.exit(id = "SL SHORT" , from_entry = "SHORT" , stop = SL)
 else
     if SUMMARY_SIGNALS == "LONG"
