@@ -93,14 +93,15 @@ SUMMARY_SIGNALS = RSI_SIGNALS == 1 and EMA_SIGNALS == 1 ? "LONG" : RSI_SIGNALS =
 if (SUMMARY_SIGNALS == "LONG")
     strategy.close("SHORT")
     strategy.entry(id="LONG",long=true)
-    strategy.exit(id="EX LONG",from_entry = "LONG" , profit = ATR_TP , stop = ATR_SL )
+    //strategy.exit(id="EX LONG",from_entry = "LONG" , profit = ATR_TP , stop = ATR_SL )
+    strategy.exit(id="EX LONG",from_entry = "LONG" , limit = ATR_TP , stop = ATR_SL )
 
 // F.2 SHORT POSITION
 if (SUMMARY_SIGNALS == "SHORT")
     strategy.close("LONG")
     strategy.entry(id="SHORT",long=false)
-    strategy.exit(id="EX SHORT",from_entry = "SHORT" , profit = ATR_TP , stop = ATR_SL )
-
+    //strategy.exit(id="EX SHORT",from_entry = "SHORT" , profit = ATR_TP , stop = ATR_SL )
+    strategy.exit(id="EX SHORT",from_entry = "SHORT" , limit = ATR_TP , stop = ATR_SL )
 
 
 
