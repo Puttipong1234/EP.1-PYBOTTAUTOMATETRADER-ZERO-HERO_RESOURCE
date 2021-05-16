@@ -72,16 +72,16 @@ ATR_SL = 0.0
 ATR_TP = 0.0
 EMA_SIGNALS = 0
 if EMA_SHORT_LINE > EMA_MIDDLE_LINE and  EMA_MIDDLE_LINE > EMA_LONG_LINE
-    if close > EMA_SHORT_LINE
-        EMA_SIGNALS := 1
-        ATR_SL := close - (ATR_VALUE * ATR_MUL_SL)
-        ATR_TP := close + (ATR_VALUE * ATR_MUL_TP)
+    //if close > EMA_SHORT_LINE
+    EMA_SIGNALS := 1
+    ATR_SL := close - (ATR_VALUE * ATR_MUL_SL)
+    ATR_TP := close + (ATR_VALUE * ATR_MUL_TP)
     
-if EMA_SHORT_LINE < EMA_MIDDLE_LINE and  EMA_MIDDLE_LINE < EMA_LONG_LINE
-    if close < EMA_SHORT_LINE
-        EMA_SIGNALS := 2
-        ATR_SL := close + (ATR_VALUE * ATR_MUL_SL)
-        ATR_TP := close - (ATR_VALUE * ATR_MUL_TP)
+else if EMA_SHORT_LINE < EMA_MIDDLE_LINE and  EMA_MIDDLE_LINE < EMA_LONG_LINE
+    //if close < EMA_SHORT_LINE
+    EMA_SIGNALS := 2
+    ATR_SL := close + (ATR_VALUE * ATR_MUL_SL)
+    ATR_TP := close - (ATR_VALUE * ATR_MUL_TP)
 
 plotchar(EMA_SIGNALS , "EMA_SIGNALS" , char = " ")
 plotchar(ATR_SL , "ATR_SL" , char = " ")
@@ -98,20 +98,19 @@ plotchar(CAL_POSITION_SIZE , "CAL_POSITION_SIZE")
 CONTRACT_SIZE = round(CAL_POSITION_SIZE/close,3)
 plotchar(CONTRACT_SIZE , "CONTRACT_SIZE")
 
+plotchar(strategy.position_size,"strategy.position_size")
+
+
+// มีการแก้ไข กรุณาอ่าน https://www.facebook.com/groups/3947710435290659/permalink/4111403845587983/
 SUMMARY_SIGNALS = RSI_SIGNALS == 1 and EMA_SIGNALS == 1 ? "LONG" : RSI_SIGNALS == 2 and EMA_SIGNALS == 2 ? "SHORT" : "NONE"
-if (SUMMARY_SIGNALS == "LONG")
-    strategy.close("SHORT")
-    strategy.entry(id="LONG",long=true,qty= CONTRACT_SIZE)
-    strategy.exit(id="EX. LONG",from_entry = "LONG" , profit = ATR_TP , stop = ATR_SL)
+if (SUMMARY_SIGNALS == "LONG" and strategy.position_size <= 0) // Check Before Open Order
+    strategy.close("SHORT" ,when = strategy.position_size <= 0) // Or use argrument "when" Check Before Open Order
+    strategy.entry(id="LONG",long=true,qty= CONTRACT_SIZE , when = strategy.position_size <= 0) // Or use argrument "when" Check Before Open Order
+    strategy.exit(id="EX LONG",from_entry = "LONG" , limit = ATR_TP , stop = ATR_SL , when = strategy.position_size <= 0) // Or use argrument "when" Check Before Set limit Order
     // strategy.exit(id="SL LONG",from_entry = "LONG" , stop = ATR_SL)
 
 // F.2 SHORT POSITION
-if (SUMMARY_SIGNALS == "SHORT")
-    strategy.close("LONG")
+if (SUMMARY_SIGNALS == "SHORT" and strategy.position_size >= 0)
+    strategy.close("LONG" ,when = strategy.position_size >= 0)
     // strategy.entry(id="SHORT",long=false,qty= CONTRACT_SIZE)
-    // strategy.exit(id="EX SHORT",from_entry = "SHORT" , profit = ATR_TP , stop = ATR_SL )
-
-
-
-
-
+    // strategy.exit(id="EX SHORT",from_entry = "SHORT" , limit = ATR_TP , stop = ATR_SL )
