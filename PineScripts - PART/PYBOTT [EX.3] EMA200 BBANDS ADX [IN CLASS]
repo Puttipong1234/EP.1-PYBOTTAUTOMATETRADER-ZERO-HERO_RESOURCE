@@ -79,8 +79,8 @@ if TAKE_2TIME_PROFITS
         SL := close - (ATR_VALUE * ATR_MUL_SL)
         strategy.close_all(when=strategy.position_size < 0)
         strategy.entry(id = "LONG" , long = true)
-        strategy.exit(id = "TP1 LONG" , from_entry = "LONG" , qty = strategy.position_size/2 , profit = TP , stop = SL)
-        strategy.exit(id = "TP2 LONG" , from_entry = "LONG" , qty = strategy.position_size , profit = TP2 , stop = SL)
+        strategy.exit(id = "TP1 LONG" , from_entry = "LONG" , qty = strategy.position_size/2 , limit = TP , stop = SL)
+        strategy.exit(id = "TP2 LONG" , from_entry = "LONG" , qty = strategy.position_size ,  limit = TP2 , stop = SL)
         //strategy.exit(id = "SL LONG" , from_entry = "LONG" , stop = SL)
     
     if SUMMARY_SIGNALS == "SHORT"
@@ -89,8 +89,8 @@ if TAKE_2TIME_PROFITS
         SL := close + (ATR_VALUE * ATR_MUL_SL)
         strategy.close_all(when=strategy.position_size > 0)
         strategy.entry(id = "SHORT" , long = false)
-        strategy.exit(id = "TP1 SHORT" , from_entry = "SHORT" , qty = strategy.position_size/2 , profit = TP , stop = SL)
-        strategy.exit(id = "TP2 SHORT" , from_entry = "SHORT" , qty = strategy.position_size ,profit = TP2 , stop = SL)
+        strategy.exit(id = "TP1 SHORT" , from_entry = "SHORT" , qty = strategy.position_size/2 , limit = TP , stop = SL)
+        strategy.exit(id = "TP2 SHORT" , from_entry = "SHORT" , qty = strategy.position_size , limit = TP2 , stop = SL)
         //strategy.exit(id = "SL SHORT" , from_entry = "SHORT" , stop = SL)
 else
     if SUMMARY_SIGNALS == "LONG"
@@ -98,7 +98,7 @@ else
         SL := close - (ATR_VALUE * ATR_MUL_SL)
         strategy.close_all(when=strategy.position_size < 0)
         strategy.entry(id = "LONG" , long = true)
-        strategy.exit(id = "TP LONG" , from_entry = "LONG" , profit = TP )
+        strategy.exit(id = "TP LONG" , from_entry = "LONG" , limit = TP )
         strategy.exit(id = "SL LONG" , from_entry = "LONG" , stop = SL)
     
     if SUMMARY_SIGNALS == "SHORT"
@@ -106,7 +106,7 @@ else
         SL := close + (ATR_VALUE * ATR_MUL_SL)
         strategy.close_all(when=strategy.position_size > 0)
         strategy.entry(id = "SHORT" , long = false)
-        strategy.exit(id = "TP SHORT" , from_entry = "SHORT" , profit = TP)
+        strategy.exit(id = "TP SHORT" , from_entry = "SHORT" , limit = TP)
         strategy.exit(id = "SL SHORT" , from_entry = "SHORT" , stop = SL)
 
 
