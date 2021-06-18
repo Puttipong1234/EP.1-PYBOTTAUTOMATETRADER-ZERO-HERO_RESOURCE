@@ -90,14 +90,14 @@ plotchar(ATR_TP , "ATR_TP" , char = " ")
 // F. Create Positions
 // F.1 LONG POSITION
 SUMMARY_SIGNALS = RSI_SIGNALS == 1 and EMA_SIGNALS == 1 ? "LONG" : RSI_SIGNALS == 2 and EMA_SIGNALS == 2 ? "SHORT" : "NONE"
-if (SUMMARY_SIGNALS == "LONG")
+if (SUMMARY_SIGNALS == "LONG") and strategy.position_size <= 0 //แก้ไข
     strategy.close("SHORT")
     strategy.entry(id="LONG",long=true)
     //strategy.exit(id="EX LONG",from_entry = "LONG" , profit = ATR_TP , stop = ATR_SL )
     strategy.exit(id="EX LONG",from_entry = "LONG" , limit = ATR_TP , stop = ATR_SL )
 
 // F.2 SHORT POSITION
-if (SUMMARY_SIGNALS == "SHORT")
+if (SUMMARY_SIGNALS == "SHORT") and strategy.position_size >= 0 //แก้ไข
     strategy.close("LONG")
     strategy.entry(id="SHORT",long=false)
     //strategy.exit(id="EX SHORT",from_entry = "SHORT" , profit = ATR_TP , stop = ATR_SL )
