@@ -99,14 +99,15 @@ CONTRACT_SIZE = round(CAL_POSITION_SIZE/close,6)
 plotchar(CONTRACT_SIZE , "CONTRACT_SIZE")
 
 SUMMARY_SIGNALS = RSI_SIGNALS == 1 and EMA_SIGNALS == 1 ? "LONG" : RSI_SIGNALS == 2 and EMA_SIGNALS == 2 ? "SHORT" : "NONE"
-if (SUMMARY_SIGNALS == "LONG")
+
+if (SUMMARY_SIGNALS == "LONG") and strategy.position_size >= 0 //แก้ไข
     strategy.close("SHORT" , alert_message = "CLOSE SHORT")
     strategy.entry(id="LONG",long=true,qty= CONTRACT_SIZE , alert_message = "OPEN LONG")
     //strategy.exit(id="EX. LONG",from_entry = "LONG" , profit = ATR_TP , stop = ATR_SL , alert_message = "{{ticket}} , CLOSE LONG , {{strategy.order.contracts}} , {{strategy.position_size}}")
     strategy.exit(id="SL LONG",from_entry = "LONG" , stop = close * (1 - 1/LEVERAGE))
 
 // F.2 SHORT POSITION
-if (SUMMARY_SIGNALS == "SHORT")
+if (SUMMARY_SIGNALS == "SHORT") and strategy.position_size >= 0 //แก้ไข
     strategy.close("LONG" , alert_message = "CLOSE LONG")
     strategy.entry(id="SHORT",long=false,qty= CONTRACT_SIZE , alert_message = "OPEN SHORT")
     //strategy.exit(id="EX SHORT",from_entry = "SHORT" , profit = ATR_TP , stop = ATR_SL , alert_message = "{{ticket}} , CLOSE SHORT , {{strategy.order.contracts}} , {{strategy.position_size}}")
