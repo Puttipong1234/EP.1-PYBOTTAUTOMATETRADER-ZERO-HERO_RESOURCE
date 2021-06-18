@@ -73,7 +73,7 @@ TAKE_2TIME_PROFITS = input( defval = false , title = "TAKE_2TIME_PROFITS" , type
 
 
 if TAKE_2TIME_PROFITS
-    if SUMMARY_SIGNALS == "LONG"
+    if SUMMARY_SIGNALS == "LONG" and strategy.position_size <= 0 // แก้ไขไม่ให้ ATR อัพเดต
         TP := close + (ATR_VALUE * ATR_MUL_TP/2)
         TP2 := close + (ATR_VALUE * ATR_MUL_TP)
         SL := close - (ATR_VALUE * ATR_MUL_SL)
@@ -83,7 +83,7 @@ if TAKE_2TIME_PROFITS
         strategy.exit(id = "TP2 LONG" , from_entry = "LONG" , qty = strategy.position_size ,  limit = TP2 , stop = SL)
         //strategy.exit(id = "SL LONG" , from_entry = "LONG" , stop = SL)
     
-    if SUMMARY_SIGNALS == "SHORT"
+    if SUMMARY_SIGNALS == "SHORT" and strategy.position_size >= 0 // แก้ไขไม่ให้ ATR อัพเดต
         TP := close - (ATR_VALUE * ATR_MUL_TP/2)
         TP2 := close - (ATR_VALUE * ATR_MUL_TP)
         SL := close + (ATR_VALUE * ATR_MUL_SL)
@@ -93,7 +93,7 @@ if TAKE_2TIME_PROFITS
         strategy.exit(id = "TP2 SHORT" , from_entry = "SHORT" , qty = strategy.position_size , limit = TP2 , stop = SL)
         //strategy.exit(id = "SL SHORT" , from_entry = "SHORT" , stop = SL)
 else
-    if SUMMARY_SIGNALS == "LONG"
+    if SUMMARY_SIGNALS == "LONG" and strategy.position_size <= 0 // แก้ไขไม่ให้ ATR อัพเดต
         TP := close + (ATR_VALUE * ATR_MUL_TP)
         SL := close - (ATR_VALUE * ATR_MUL_SL)
         strategy.close_all(when=strategy.position_size < 0)
@@ -101,7 +101,7 @@ else
         strategy.exit(id = "TP LONG" , from_entry = "LONG" , limit = TP )
         strategy.exit(id = "SL LONG" , from_entry = "LONG" , stop = SL)
     
-    if SUMMARY_SIGNALS == "SHORT"
+    if SUMMARY_SIGNALS == "SHORT" and strategy.position_size >= 0 // แก้ไขไม่ให้ ATR อัพเดต
         TP := close - (ATR_VALUE * ATR_MUL_TP)
         SL := close + (ATR_VALUE * ATR_MUL_SL)
         strategy.close_all(when=strategy.position_size > 0)
