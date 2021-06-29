@@ -1,3 +1,4 @@
+  
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 // © PuttipongAutomateTrader
 
@@ -98,16 +99,16 @@ else
         SL := close - (ATR_VALUE * ATR_MUL_SL)
         strategy.close_all(when=strategy.position_size < 0)
         strategy.entry(id = "LONG" , long = true)
-        strategy.exit(id = "TP LONG" , from_entry = "LONG" , limit = TP )
-        strategy.exit(id = "SL LONG" , from_entry = "LONG" , stop = SL)
+        strategy.exit(id = "CLOSE LONG" , from_entry = "LONG" , limit = TP , stop = SL)
+        // strategy.exit(id = "SL LONG" , from_entry = "LONG" , stop = SL)
     
     if SUMMARY_SIGNALS == "SHORT" and strategy.position_size >= 0 // แก้ไขไม่ให้ ATR อัพเดต
         TP := close - (ATR_VALUE * ATR_MUL_TP)
         SL := close + (ATR_VALUE * ATR_MUL_SL)
         strategy.close_all(when=strategy.position_size > 0)
         strategy.entry(id = "SHORT" , long = false)
-        strategy.exit(id = "TP SHORT" , from_entry = "SHORT" , limit = TP)
-        strategy.exit(id = "SL SHORT" , from_entry = "SHORT" , stop = SL)
+        strategy.exit(id = "CLOSE SHORT" , from_entry = "SHORT" , limit = TP , stop = SL) // อยู่บรรทัดเดียวกันเท่านั้น limit , stop
+        // strategy.exit(id = "SL SHORT" , from_entry = "SHORT" , stop = SL)
 
 
 
