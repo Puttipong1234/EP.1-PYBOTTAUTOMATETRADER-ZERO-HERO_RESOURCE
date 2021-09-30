@@ -1,0 +1,64 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © PuttipongAutomateTrader
+
+//@version=4
+strategy("PYBOTT SHINOBI SCULPING 30-09-2021 (V.3)" , overlay=true , default_qty_type = strategy.cash , currency = currency.USD , initial_capital = 6000 , commission_type = strategy.commission.percent,commission_value = 0.02)
+
+EMA_FAST_LENGTH = input( title = "EMA_SHORT" , type = input.integer , defval = 50 , group = "EMA CONFIG")
+EMA_SLOW_LENGTH = input( title = "EMA_LONG" , type = input.integer , defval = 200 , group = "EMA CONFIG")
+
+
+EMA_FAST = ema(close , EMA_FAST_LENGTH )
+EMA_SLOW = ema(close , EMA_SLOW_LENGTH )
+
+
+EACHLOTS = input( defval = 10 , title = "LOTS" , type = input.integer , group = "POSITION CONFIG" )
+LEVERAGE = input( defval = 50 , title = "Leverage" , type = input.integer , group = "POSITION CONFIG"  )
+TEST_SIZE = (strategy.initial_capital/EACHLOTS) * LEVERAGE
+TEST_CONTRACT_SIZE = round(TEST_SIZE/close,3)
+
+if (crossover(close , EMA_SLOW)and EMA_FAST > EMA_SLOW)
+    strategy.entry(id="LONG",long=true,qty=TEST_CONTRACT_SIZE, when = strategy.position_size <= 0)
+
+else if (crossunder(close , EMA_SLOW) and EMA_FAST < EMA_SLOW)
+    strategy.entry(id="SHORT",long=false,qty=TEST_CONTRACT_SIZE, when = strategy.position_size >= 0)
+
+plot(EMA_FAST , "EMA_FAST" , color=color.red)
+plot(EMA_SLOW , "EMA_SLOW" , color=color.green)
+
+Redundant = strategy.position_avg_price * (1 - 0.99) * (0.4)
+
+longStopPrice  = (strategy.position_avg_price * (1 - (1/LEVERAGE))) + Redundant
+shortStopPrice = (strategy.position_avg_price * (1 + (1/LEVERAGE))) - Redundant
+
+TP_RATIO = input(1.25, "RR", minval=0.5 , group = "RISK CONFIG")
+opened_since = 0
+opened_since := strategy.position_size == 0 ? 0 : opened_since[1] + 1
+TP_N = 0.0
+
+if (strategy.position_size > 0)
+    
+    TP_N := (((strategy.position_avg_price - longStopPrice)*TP_RATIO) + strategy.position_avg_price )
+    strategy.exit(id="XL STP", stop=longStopPrice ,limit = TP_N , comment = "TPSL LONG")
+
+if (strategy.position_size < 0)
+   
+    TP_N := (strategy.position_avg_price - ((shortStopPrice - strategy.position_avg_price)*TP_RATIO ) )
+    strategy.exit(id="XS STP", stop=shortStopPrice ,limit = TP_N , comment = "TPSL SHORT")
+    
+
+plot(series=(strategy.position_size > 0) ? TP_N : na,
+     style=plot.style_circles, color=color.green, linewidth=1,
+     title="Lowest Low Stop")
+
+plot(series=(strategy.position_size > 0) ? longStopPrice : na,
+     style=plot.style_circles, color=color.red, linewidth=1,
+     title="Highest High Stop") 
+
+plot(series=(strategy.position_size < 0) ? TP_N : na,
+     style=plot.style_circles, color=color.green, linewidth=1,
+     title="Highest High Stop") 
+
+plot(series=(strategy.position_size < 0) ? shortStopPrice : na,
+     style=plot.style_circles, color=color.red, linewidth=1,
+     title="Highest High Stop") 
