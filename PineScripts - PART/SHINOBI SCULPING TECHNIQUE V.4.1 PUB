@@ -1,0 +1,92 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © PuttipongAutomateTrader
+
+//@version=4
+strategy("PYBOTT SHINOBI SCULPING [BTCPERP] (V.4.1hr) PUB" , overlay=true , default_qty_type = strategy.cash , currency = currency.USD , initial_capital = 300 , commission_type = strategy.commission.percent,commission_value = 0.01)
+
+// Make input options that configure backtest date range
+startDate = input(title="Start Date", type=input.integer,
+     defval=2, minval=1, maxval=31 , group = "DATE CONFIG")
+startMonth = input(title="Start Month", type=input.integer,
+     defval=1, minval=8, maxval=12 , group = "DATE CONFIG")
+startYear = input(title="Start Year", type=input.integer,
+     defval=2020, minval=1800, maxval=2100 , group = "DATE CONFIG")
+
+endDate = input(title="End Date", type=input.integer,
+     defval=1, minval=1, maxval=31 , group = "DATE CONFIG")
+endMonth = input(title="End Month", type=input.integer,
+     defval=10, minval=1, maxval=12 , group = "DATE CONFIG")
+endYear = input(title="End Year", type=input.integer,
+     defval=2021, minval=1800, maxval=2100 , group = "DATE CONFIG")
+SPECIFIC_DATE = input( title = "USE SPECIFIC DATE ?" , type = input.bool , defval = false , group = "DATE CONFIG")
+TEXT_DATE = SPECIFIC_DATE ? tostring(startMonth) + "/" + tostring(startYear) + "  -  " + tostring(endMonth) + "/" + tostring(endYear) : "แท่งเทียนทั้งหมด"
+
+inDateRange = SPECIFIC_DATE ? (time >= timestamp(syminfo.timezone, startYear,
+         startMonth, startDate, 0, 0)) and
+     (time < timestamp(syminfo.timezone, endYear, endMonth, endDate, 0, 0)) : true
+
+EMA_FAST_LENGTH = input( title = "EMA_SHORT" , type = input.integer , defval = 50 , group = "EMA CONFIG")
+EMA_SLOW_LENGTH = input( title = "EMA_LONG" , type = input.integer , defval = 200 , group = "EMA CONFIG")
+
+
+EMA_FAST = ema(close , EMA_FAST_LENGTH )
+EMA_SLOW = ema(close , EMA_SLOW_LENGTH )
+
+
+EACHLOTS = input( defval = 10 , title = "LOTS" , type = input.integer , group = "POSITION CONFIG" )
+LEVERAGE = input( defval = 30 , title = "Leverage" , type = input.integer , group = "POSITION CONFIG"  )
+LONG_ONLY = input(false, "LONG_ONLY ?", group = "POSITION CONFIG")
+
+TEST_SIZE = (strategy.initial_capital/EACHLOTS) * LEVERAGE
+TEST_CONTRACT_SIZE = round(TEST_SIZE/close,3)
+
+//if (crossover(close , EMA_SLOW)and EMA_FAST > EMA_SLOW)
+if (crossover(EMA_FAST , EMA_SLOW) and inDateRange )
+    strategy.entry(id="LONG",long=true,qty=TEST_CONTRACT_SIZE, comment = "OPEN LONG")
+
+//else if (crossunder(close , EMA_SLOW) and EMA_FAST < EMA_SLOW)
+if (crossunder(EMA_FAST , EMA_SLOW) and inDateRange )
+    if (LONG_ONLY)
+        strategy.close_all()
+    else
+        strategy.entry(id="SHORT",long=false,qty=TEST_CONTRACT_SIZE, comment = "OPEN SHORT")
+
+plot(EMA_FAST , "EMA_FAST" , color=color.red)
+plot(EMA_SLOW , "EMA_SLOW" , color=color.green)
+
+// Redundant = strategy.position_avg_price * (1 - 0.99) * (0.4)
+
+longStopPrice  = (strategy.position_avg_price * (1 - (1/LEVERAGE))) //+ Redundant
+shortStopPrice = (strategy.position_avg_price * (1 + (1/LEVERAGE))) //- Redundant
+
+TP_RATIO = input(5, "RR", minval=0.5 , group = "RISK CONFIG")
+
+opened_since = 0
+opened_since := strategy.position_size == 0 ? 0 : opened_since[1] + 1
+TP_N = 0.0
+WINS = 0.0
+
+if (strategy.position_size > 0 and inDateRange )
+    
+    TP_N := (((strategy.position_avg_price - longStopPrice)*TP_RATIO) + strategy.position_avg_price )
+    strategy.exit(id="XL STP", stop=longStopPrice ,limit = TP_N , comment = "TPSL LONG")
+
+if (strategy.position_size < 0 and inDateRange )
+   
+    TP_N := (strategy.position_avg_price - ((shortStopPrice - strategy.position_avg_price)*TP_RATIO ) )
+    strategy.exit(id="XS STP", stop=shortStopPrice ,limit = TP_N , comment = "TPSL SHORT")
+    
+
+
+plot(series=(strategy.position_size > 0) ? longStopPrice : na,
+     style=plot.style_circles, color=color.red, linewidth=1,
+     title="Highest High Stop") 
+
+
+plot(series=(strategy.position_size < 0) ? shortStopPrice : na,
+     style=plot.style_circles, color=color.red, linewidth=1,
+     title="Highest High Stop") 
+
+l = label.new(x=time + 1 * (time - time[1]) , y=high , xloc=xloc.bar_time , style= true ? label.style_label_lower_left : label.style_label_upper_left , yloc = yloc.price , color=#14ff3c66 , textcolor = color.white , size = size.small , text =  "------------------------------------------\n SHINOBI SCULPING V.4.1 [PYBOTT] \n------------------------------------------\n TOTAL PROFITS :  " + tostring(round(strategy.netprofit,2)) +"\n\n CURRENT EQUITY :  "+ tostring(round(strategy.equity,2)) +"\n\n WIN/LOSE :  "+ tostring(round(strategy.wintrades,2)) + "/" + tostring(round(strategy.losstrades,2)) + "\n\n (สรุปผลการเทรดช่วงเวลา)\n"+TEXT_DATE)
+
+label.delete(l[1])
