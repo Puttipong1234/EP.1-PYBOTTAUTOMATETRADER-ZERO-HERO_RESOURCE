@@ -1,0 +1,85 @@
+// 0. Make input options that configure backtest date range
+startDate = input(title="Start Date", type=input.integer,
+     defval=2, minval=1, maxval=31 , group = "DATE CONFIG")
+startMonth = input(title="Start Month", type=input.integer,
+     defval=1, minval=1, maxval=12 , group = "DATE CONFIG")
+startYear = input(title="Start Year", type=input.integer,
+     defval=2020, minval=1800, maxval=2100 , group = "DATE CONFIG")
+
+endDate = input(title="End Date", type=input.integer,
+     defval=1, minval=1, maxval=31 , group = "DATE CONFIG")
+endMonth = input(title="End Month", type=input.integer,
+     defval=10, minval=1, maxval=12 , group = "DATE CONFIG")
+endYear = input(title="End Year", type=input.integer,
+     defval=2021, minval=1800, maxval=2100 , group = "DATE CONFIG")
+SPECIFIC_DATE = input( title = "USE SPECIFIC DATE ?" , type = input.bool , defval = false , group = "DATE CONFIG")
+TEXT_DATE = SPECIFIC_DATE ? tostring(startMonth) + "/" + tostring(startYear) + "  -  " + tostring(endMonth) + "/" + tostring(endYear) : "แท่งเทียนทั้งหมด"
+
+inDateRange = SPECIFIC_DATE ? (time >= timestamp(syminfo.timezone, startYear,
+         startMonth, startDate, 0, 0)) and
+     (time < timestamp(syminfo.timezone, endYear, endMonth, endDate, 0, 0)) : true
+
+
+// A. Create PSAR indicator
+PSAR_start = input(0.02, group = "PSAR CONFIG")
+PSAR_increment = input(0.02, group = "PSAR CONFIG")
+PSAR_maximum = input(0.2, "Max Value", group = "PSAR CONFIG")
+PSAR_out = sar(PSAR_start, PSAR_increment, PSAR_maximum)
+plot(PSAR_out, "ParabolicSAR", style=plot.style_cross, color=#2962FF)
+
+// B. Create MACD 
+MACD_fast_length = input(title="Fast Length", type=input.integer, defval=12, group = "MACD CONFIG")
+MACD_slow_length = input(title="Slow Length", type=input.integer, defval=26, group = "MACD CONFIG")
+MACD_src = input(title="Source", type=input.source, defval=close)
+MACD_signal_length = input(title="Signal Smoothing", type=input.integer, minval = 1, maxval = 50, defval = 9)
+
+MACD_fast_ma = ema(MACD_src, MACD_fast_length)
+MACD_slow_ma = ema(MACD_src, MACD_slow_length)
+MACD_macd = MACD_fast_ma - MACD_slow_ma
+MACD_signal = ema(MACD_macd, MACD_signal_length)
+MACD_hist = MACD_macd - MACD_signal
+
+// C. Create EMA
+EMA_LENGTH  = input(100, group = "EMA CONFIG")
+EMA = ema(close , EMA_LENGTH )
+plot(EMA, "EMA", color=color.gray)
+
+// D. Order Signal
+LONG_SIGNAL = MACD_hist > 0 and close > EMA and close > PSAR_out ? 1 : 0
+SHORT_SIGNAL = MACD_hist < 0 and close < EMA and close < PSAR_out ? 1 : 0
+SUM_SIGNAL = LONG_SIGNAL == 1 ? 1 : SHORT_SIGNAL == 1 ? 2 : 0 // 1 long 2 short 0 none
+
+// E. Calculate Order
+
+// F. Make Positions
+EACHLOTS = input( defval = 10 , title = "LOTS" , type = input.integer , group = "POSITION CONFIG" )
+LEVERAGE = input( defval = 40 , title = "Leverage" , type = input.integer , group = "POSITION CONFIG"  )
+LONG_ONLY = input(false, "LONG_ONLY ?", group = "POSITION CONFIG")
+
+TEST_SIZE = (strategy.initial_capital/EACHLOTS) * LEVERAGE
+TEST_CONTRACT_SIZE = round(TEST_SIZE/close,3)
+
+if (SUM_SIGNAL == 1 and inDateRange )
+    strategy.entry(id="LONG",long=true,qty=TEST_CONTRACT_SIZE, comment = "OPEN LONG")
+
+if (SUM_SIGNAL == 2 and inDateRange )
+    if (LONG_ONLY)
+        strategy.close_all()
+    else
+        strategy.entry(id="SHORT",long=false,qty=TEST_CONTRACT_SIZE, comment = "OPEN SHORT")
+
+
+// G. Risk Calculation
+TP_RATIO = input(15, "RR", minval=0.5 , group = "RISK CONFIG")
+TP_N = 0.0
+
+longStopPrice  = (strategy.position_avg_price * (1 - (1/LEVERAGE))) //+ Redundant
+shortStopPrice = (strategy.position_avg_price * (1 + (1/LEVERAGE))) //- Redundant
+
+if (strategy.position_size > 0 and inDateRange )
+    TP_N := (((strategy.position_avg_price - longStopPrice)*TP_RATIO) + strategy.position_avg_price )
+    strategy.exit(id="XL STP", stop=longStopPrice ,limit = TP_N , comment = "TPSL LONG")
+
+if (strategy.position_size < 0 and inDateRange )
+    TP_N := (strategy.position_avg_price - ((shortStopPrice - strategy.position_avg_price)*TP_RATIO ) )
+    strategy.exit(id="XS STP", stop=shortStopPrice ,limit = TP_N , comment = "TPSL SHORT")
