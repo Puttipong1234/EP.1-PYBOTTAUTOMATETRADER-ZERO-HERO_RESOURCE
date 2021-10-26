@@ -1,8 +1,3 @@
-// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © PuttipongAutomateTrader
-
-//@version=4
-strategy("PYBOTT SHINOBI SCULPING [BTCPERP] (V.4.1hr) PUB" , overlay=true , default_qty_type = strategy.cash , currency = currency.USD , initial_capital = 300 , commission_type = strategy.commission.percent,commission_value = 0.01)
 
 // Make input options that configure backtest date range
 startDate = input(title="Start Date", type=input.integer,
