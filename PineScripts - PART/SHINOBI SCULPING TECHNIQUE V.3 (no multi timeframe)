@@ -1,8 +1,3 @@
-// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © PuttipongAutomateTrader
-
-//@version=4
-strategy("PYBOTT SHINOBI SCULPING 30-09-2021 (V.3)" , overlay=true , default_qty_type = strategy.cash , currency = currency.USD , initial_capital = 6000 , commission_type = strategy.commission.percent,commission_value = 0.02)
 
 EMA_FAST_LENGTH = input( title = "EMA_SHORT" , type = input.integer , defval = 50 , group = "EMA CONFIG")
 EMA_SLOW_LENGTH = input( title = "EMA_LONG" , type = input.integer , defval = 200 , group = "EMA CONFIG")
