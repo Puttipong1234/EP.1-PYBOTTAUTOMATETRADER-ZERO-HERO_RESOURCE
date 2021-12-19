@@ -92,7 +92,7 @@ SUMMARY_SIGNALS = crossover(close,EMA_200) ? 1 : crossunder(close,EMA_200) ? 2 :
     ///////////////////////////////
     
 TEST_SIZE = (strategy.initial_capital/EACHLOTS) * LEVERAGE
-TEST_CONTRACT_SIZE = round(TEST_SIZE/close,3)
+TEST_CONTRACT_SIZE = abs(round(TEST_SIZE/close,3))
 plotchar(TEST_CONTRACT_SIZE,"TEST_CONTRACT_SIZE",char = " ")
     
     ///////////////////////////////
