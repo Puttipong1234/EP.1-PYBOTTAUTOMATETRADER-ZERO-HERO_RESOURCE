@@ -198,7 +198,7 @@ if (strategy.position_size > 0 and inDateRange ) // LONG
     strategy.exit(id="XL STP",from_entry="LONG", stop=LongSLsum ,limit = LongTPsum  , comment = "TPSL LONG")
 
 if (strategy.position_size < 0 and inDateRange ) // SHORT
-    strategy.exit(id="XL STP",from_entry="SHORT", stop=ShortSLsum ,limit = ShortTPsum , comment = "TPSL LONG")
+    strategy.exit(id="XL STP",from_entry="SHORT", stop=ShortSLsum ,limit = ShortTPsum , comment = "TPSL SHORT")
 
     //////////////////////////////
     //    PLOT FOR TPSL LINE    //
