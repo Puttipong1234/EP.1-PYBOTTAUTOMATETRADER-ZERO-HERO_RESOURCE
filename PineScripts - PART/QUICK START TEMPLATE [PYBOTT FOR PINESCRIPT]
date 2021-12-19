@@ -1,0 +1,232 @@
+// This source code is free to use, copy, and alter in any way you choose.
+// ...but credit is always nice :)
+// FB FANPAGE : PYBOTT
+
+//@version=4
+//@author=PYBOTT
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                COMMONS INPUT ARE INITIATE FOR STRATEGY                     //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////
+    //     STRATEGY ESTABLISH    //
+    ///////////////////////////////  
+
+strategy("PYBOTT - TEMPLATE FOR ANY SCRIPT" , overlay=true , default_qty_type = strategy.cash , currency = currency.USD , initial_capital = 30000 , commission_type = strategy.commission.percent,commission_value = 0.2)
+    
+    ///////////////////////////////
+    //   DATE RANGE OF BACKTEST  //
+    ///////////////////////////////
+    
+startDate = input(title="Start Date", type=input.integer,
+     defval=2, minval=1, maxval=31 , group = "DATE CONFIG")
+startMonth = input(title="Start Month", type=input.integer,
+     defval=1, minval=1, maxval=12 , group = "DATE CONFIG")
+startYear = input(title="Start Year", type=input.integer,
+     defval=2020, minval=1800, maxval=2100 , group = "DATE CONFIG")
+
+endDate = input(title="End Date", type=input.integer,
+     defval=1, minval=1, maxval=31 , group = "DATE CONFIG")
+endMonth = input(title="End Month", type=input.integer,
+     defval=10, minval=1, maxval=12 , group = "DATE CONFIG")
+endYear = input(title="End Year", type=input.integer,
+     defval=2021, minval=1800, maxval=2100 , group = "DATE CONFIG")
+     
+SPECIFIC_DATE = input( title = "USE SPECIFIC DATE ?" , type = input.bool , defval = false , group = "DATE CONFIG")
+TEXT_DATE = SPECIFIC_DATE ? tostring(startMonth) + "/" + tostring(startYear) + "  -  " + tostring(endMonth) + "/" + tostring(endYear) : "แท่งเทียนทั้งหมด"
+    
+inDateRange = SPECIFIC_DATE ? (time >= timestamp(syminfo.timezone, startYear,
+         startMonth, startDate, 0, 0)) and
+     (time < timestamp(syminfo.timezone, endYear, endMonth, endDate, 0, 0)) : true
+    
+    ///////////////////////////////
+    // RISK CONFIG FOR STRATEGY  //
+    ///////////////////////////////
+    
+EACHLOTS = input( defval = 30 , title = "LOTS" , type = input.integer , group = "RISK CONFIG" )
+LEVERAGE = input( defval = 25 , title = "Leverage" , type = input.integer , group = "RISK CONFIG"  )
+LONG_ONLY = input(true, "LONG_ONLY ?", group = "RISK CONFIG") 
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                      ======  INDICATORS IN USE  ======                     //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+
+    ///////////////////////////////
+    //  CREATE INDICATOR 1 HERE  //
+    ///////////////////////////////
+
+EMA_LENGTH = input(title = "EMA_LENGTH",defval = 98,group="EMA CONFIG")
+EMA_200 = ema(close,EMA_LENGTH)
+plot(EMA_200)
+
+    ///////////////////////////////
+    //  CREATE INDICATOR 2 HERE  //
+    ///////////////////////////////
+    
+    ///////////////////////////////
+    //  CREATE INDICATOR 3 HERE  //
+    ///////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                      ====== POSITION AND SIGNAL ======                     //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////
+    //   CREATE SUMMARY SIGNALS  //
+    /////////////////////////////// 
+
+SUMMARY_SIGNALS = crossover(close,EMA_200) ? 1 : crossunder(close,EMA_200) ? 2 : 0 // 1 long , 2 short , 0 none
+    
+    ///////////////////////////////
+    // AMOUNT & SIZE CALCULATION //
+    ///////////////////////////////
+    
+TEST_SIZE = (strategy.initial_capital/EACHLOTS) * LEVERAGE
+TEST_CONTRACT_SIZE = round(TEST_SIZE/close,3)
+plotchar(TEST_CONTRACT_SIZE,"TEST_CONTRACT_SIZE",char = " ")
+    
+    ///////////////////////////////
+    //   CREATE ENTRY POSITION   //
+    ///////////////////////////////    
+    
+if (SUMMARY_SIGNALS == 1) and strategy.position_size <= 0 and inDateRange 
+    strategy.entry(id="LONG",long=true,qty=TEST_CONTRACT_SIZE, comment = "OPEN LONG")
+
+if (SUMMARY_SIGNALS == 2) and strategy.position_size >= 0 and inDateRange 
+    if (LONG_ONLY)
+        strategy.close_all()
+    else
+        strategy.entry(id="SHORT",long=false,qty=TEST_CONTRACT_SIZE, comment = "OPEN SHORT")
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                      ==== TAKE-PROFITS STOPLOSS  ===                       //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+SL_METHOD = input(title="SL_METHOD", defval="SL@PREVIOUS_LOW", options=["SL@PREVIOUS_LOW", "SL@LEVERAGE", "SL@ATR"], group = "SL CONFIG")
+
+    /////////////////////////
+    //  PLOW CALCULATION   //
+    /////////////////////////
+
+PREVIOUS_SL_LOOKBACK = input(title="LOWEST_SL_LOOKBACK", defval=52, minval=5 , group = "SL@PREVIOUS HL CONFIG")
+PREVIOUS_SL_RR = input(title="PREVIOUS_SL_RR", defval=20, minval=0.5 , group = "SL@PREVIOUS HL CONFIG")
+
+PLowLongStopPrice = lowest(low,PREVIOUS_SL_LOOKBACK)
+PhighShortStopPrice = highest(high,PREVIOUS_SL_LOOKBACK)
+
+if strategy.position_size > 0
+    PLowLongStopPrice := min(nz(PLowLongStopPrice[1]),PLowLongStopPrice)
+if strategy.position_size < 0
+    PhighShortStopPrice := max(nz(PhighShortStopPrice[1]),PhighShortStopPrice)
+
+    /////////////////////////
+    //  ATR CALCULATION   ///
+    /////////////////////////
+
+ATR_LENGTH = input(title="ATR_LENGTH", defval=21, minval=1 , group = "SL@ATR CONFIG")
+ATR_SMOOTHING = input(title="ATR_SMOOTHING", defval="RMA", options=["RMA", "SMA", "EMA", "WMA"] , group = "SL@ATR CONFIG")
+ATR_MUL_SL = input( title = "ATR_MUL_SL" , type = input.float , defval = 2 , group = "SL@ATR CONFIG")
+ATR_MUL_TP = input( title = "ATR_MUL_TP" , type = input.float , defval = 3 , group = "SL@ATR CONFIG")
+ma_function(source, length) =>
+	rma(source, length)
+	
+ATR_VALUE = ma_function(tr(true),ATR_LENGTH)
+ATR_VALUE := strategy.position_size == 0 ? ATR_VALUE : ATR_VALUE[1]
+
+    /////////////////////////////
+    //  LEVERAGE CALCULATION   //
+    /////////////////////////////
+
+LeveragelongStopPrice  = (strategy.position_avg_price * (1 - (1/LEVERAGE))) //+ Redundant
+LeverageshortStopPrice = (strategy.position_avg_price * (1 + (1/LEVERAGE))) //- Redundant
+
+RR_LONG_TP = input( title = "RR_LONG_TP" , type = input.float , defval = 11 , group = "SL@LEVERAGE CONFIG")
+RR_SHORT_TP = input( title = "RR_SHORT_TP" , type = input.float , defval = 11 , group = "SL@LEVERAGE CONFIG")
+    
+    //////////////////////////////
+    //  CREATE TP SL POSITION   //
+    //////////////////////////////
+
+
+LongSLsum = 0.0
+ShortSLsum = 0.0
+LongTPsum = 0.0
+ShortTPsum = 0.0
+
+if SL_METHOD == "SL@PREVIOUS_LOW"
+    LongSLsum := max(PLowLongStopPrice,LeveragelongStopPrice)
+    ShortSLsum := min(PhighShortStopPrice,LeverageshortStopPrice)
+    
+    Ldiff = abs(strategy.position_avg_price - PLowLongStopPrice)
+    Sdiff = abs(strategy.position_avg_price - PhighShortStopPrice)
+    
+    LongTPsum := strategy.position_avg_price + Ldiff * PREVIOUS_SL_RR
+    ShortTPsum := strategy.position_avg_price - Sdiff * PREVIOUS_SL_RR
+
+else if SL_METHOD == "SL@LEVERAGE"
+    LongSLsum := LeveragelongStopPrice
+    ShortSLsum := LeverageshortStopPrice
+    
+    Ldiff = abs(strategy.position_avg_price - LeveragelongStopPrice)
+    Sdiff = abs(strategy.position_avg_price - LeverageshortStopPrice)
+    
+    LongTPsum := strategy.position_avg_price + RR_LONG_TP * Ldiff
+    ShortTPsum := strategy.position_avg_price - Sdiff * RR_SHORT_TP
+
+else if SL_METHOD == "SL@ATR"
+    LongSLsum := max(strategy.position_avg_price - (ATR_VALUE * ATR_MUL_SL),LeveragelongStopPrice)
+    ShortSLsum := min(strategy.position_avg_price + (ATR_VALUE * ATR_MUL_SL),LeverageshortStopPrice)
+    
+    LongTPsum := strategy.position_avg_price + (ATR_VALUE * ATR_MUL_TP)
+    ShortTPsum := strategy.position_avg_price - (ATR_VALUE * ATR_MUL_TP)
+
+
+if (strategy.position_size > 0 and inDateRange ) // LONG
+    strategy.exit(id="XL STP",from_entry="LONG", stop=LongSLsum ,limit = LongTPsum  , comment = "TPSL LONG")
+
+if (strategy.position_size < 0 and inDateRange ) // SHORT
+    strategy.exit(id="XL STP",from_entry="SHORT", stop=ShortSLsum ,limit = ShortTPsum , comment = "TPSL LONG")
+
+    //////////////////////////////
+    //    PLOT FOR TPSL LINE    //
+    //////////////////////////////
+plotchar(title="ATR VALUE" , series = ATR_VALUE , char='')
+plotchar(title="(ATR_VALUE * ATR_MUL_SL)" , series = ATR_VALUE * ATR_MUL_SL , char='')
+plotchar(title="(ATR_VALUE * ATR_MUL_TP)" , series = ATR_VALUE * ATR_MUL_TP , char='')
+
+plot(series=(strategy.position_size > 0) ? LongSLsum : na,
+     style=plot.style_circles, color=color.red, linewidth=1,
+     title="LongSLsum") 
+
+     
+plot(series=(strategy.position_size < 0) ? ShortSLsum : na,
+     style=plot.style_circles, color=color.red, linewidth=1,
+     title="ShortSLsum") 
+
+plot(series=(strategy.position_size > 0) ? LongTPsum : na,
+     style=plot.style_circles, color=color.green, linewidth=1,
+     title="LongTPsum") 
+
+     
+plot(series=(strategy.position_size < 0) ? ShortTPsum : na,
+     style=plot.style_circles, color=color.green, linewidth=1,
+     title="ShortTPsum") 
+     
+
+
+l = label.new(x=time + 1 * (time - time[1]) , y=high , xloc=xloc.bar_time , style= true ? label.style_label_lower_left : label.style_label_upper_left , yloc = yloc.price , color=#14ff3c66 , textcolor = color.white , size = size.small , text =  "------------------------------------------\n QUICK STARTER TEMPLATE [PYBOTT] \n------------------------------------------\n TOTAL PROFITS :  " + tostring(round(strategy.netprofit,2)) +"\n\n CURRENT EQUITY :  "+ tostring(round(strategy.equity,2)) +"\n\n WIN/LOSE :  "+ tostring(round(strategy.wintrades,2)) + "/" + tostring(round(strategy.losstrades,2)) + "\n\n (สรุปผลการเทรดช่วงเวลา)\n"+TEXT_DATE)
+
+label.delete(l[1])
