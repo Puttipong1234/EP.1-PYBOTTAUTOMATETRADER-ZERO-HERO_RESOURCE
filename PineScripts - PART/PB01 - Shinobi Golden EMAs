@@ -108,7 +108,7 @@ if (SUMMARY_SIGNALS == 1) and strategy.position_size <= 0 and inDateRange
 
 if (SUMMARY_SIGNALS == 2) and strategy.position_size >= 0 and inDateRange 
     if (LONG_ONLY)
-        strategy.close_all()
+        strategy.close_all(comment = "TPSL LONG")
     else
         strategy.entry(id="SHORT",long=false,qty=TEST_CONTRACT_SIZE, comment = "OPEN SHORT")
 
