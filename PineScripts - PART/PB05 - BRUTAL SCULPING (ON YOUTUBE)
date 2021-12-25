@@ -1,0 +1,433 @@
+// This source code is free to use, copy, and alter in any way you choose.
+// ...but credit is always nice :)
+// FB FANPAGE : PYBOTT
+
+//@version=4
+//@author=PYBOTT
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                COMMONS INPUT ARE INITIATE FOR STRATEGY                     //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////
+    //     STRATEGY ESTABLISH    //
+    ///////////////////////////////  
+
+strategy("PB05 - Brutal Sculping" , overlay=true , default_qty_type = strategy.cash , currency = currency.USD , initial_capital = 30000 , commission_type = strategy.commission.percent,commission_value = 0.2)
+    
+    ///////////////////////////////
+    //   DATE RANGE OF BACKTEST  //
+    ///////////////////////////////
+    
+startDate = input(title="Start Date", type=input.integer,
+     defval=2, minval=1, maxval=31 , group = "DATE CONFIG")
+startMonth = input(title="Start Month", type=input.integer,
+     defval=1, minval=1, maxval=12 , group = "DATE CONFIG")
+startYear = input(title="Start Year", type=input.integer,
+     defval=2020, minval=1800, maxval=2100 , group = "DATE CONFIG")
+
+endDate = input(title="End Date", type=input.integer,
+     defval=1, minval=1, maxval=31 , group = "DATE CONFIG")
+endMonth = input(title="End Month", type=input.integer,
+     defval=10, minval=1, maxval=12 , group = "DATE CONFIG")
+endYear = input(title="End Year", type=input.integer,
+     defval=2021, minval=1800, maxval=2100 , group = "DATE CONFIG")
+     
+SPECIFIC_DATE = input( title = "USE SPECIFIC DATE ?" , type = input.bool , defval = false , group = "DATE CONFIG")
+TEXT_DATE = SPECIFIC_DATE ? tostring(startMonth) + "/" + tostring(startYear) + "  -  " + tostring(endMonth) + "/" + tostring(endYear) : "แท่งเทียนทั้งหมด"
+    
+inDateRange = SPECIFIC_DATE ? (time >= timestamp(syminfo.timezone, startYear,
+         startMonth, startDate, 0, 0)) and
+     (time < timestamp(syminfo.timezone, endYear, endMonth, endDate, 0, 0)) : true
+    
+    ///////////////////////////////
+    // RISK CONFIG FOR STRATEGY  //
+    ///////////////////////////////
+    
+EACHLOTS = input( defval = 25 , title = "LOTS" , type = input.integer , group = "RISK CONFIG" )
+LEVERAGE = input( defval = 35 , title = "Leverage" , type = input.integer , group = "RISK CONFIG"  )
+LONG_ONLY = input(false, "LONG_ONLY ?", group = "RISK CONFIG") 
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                      ======  INDICATORS IN USE  ======                     //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+
+    ///////////////////////////////
+    //  CREATE INDICATOR 1 HERE  //
+    ///////////////////////////////
+
+EMA_LENGTH = input(title = "EMA_LENGTH",defval = 3000,group="EMA CONFIG")
+EMA = ema(close,EMA_LENGTH)
+plot(EMA)
+EMA_SIGNAL = close > EMA ? 1 : 2 // bias side
+
+    ///////////////////////////////
+    //  CREATE INDICATOR 2 HERE  //
+    ///////////////////////////////
+
+show_Baseline = input(title="Show Baseline", type=input.bool, defval=true)
+show_SSL1 = input(title="Show SSL1", type=input.bool, defval=false)
+show_atr = input(title="Show ATR bands", type=input.bool, defval=true)
+//ATR
+atrlen = input(14, "ATR Period")
+mult = input(1, "ATR Multi", step=0.1)
+smoothing = input(title="ATR Smoothing", defval="WMA", options=["RMA", "SMA", "EMA", "WMA"])
+
+ma_function(source, atrlen) => 
+    if smoothing == "RMA"
+        rma(source, atrlen)
+    else
+        if smoothing == "SMA"
+            sma(source, atrlen)
+        else
+            if smoothing == "EMA"
+                ema(source, atrlen)
+            else
+                wma(source, atrlen)
+
+atr_slen = ma_function(tr(true), atrlen)
+////ATR Up/Low Bands
+upper_band = atr_slen * mult + close
+lower_band = close - atr_slen * mult
+
+////BASELINE / SSL1 / SSL2 / EXIT MOVING AVERAGE VALUES
+maType = input(title="SSL1 / Baseline Type", type=input.string, defval="HMA", options=["SMA","EMA","DEMA","TEMA","LSMA","WMA","MF","VAMA","TMA","HMA", "JMA", "Kijun v2", "EDSMA","McGinley"])
+len = input(title="SSL1 / Baseline Length", defval=60)
+
+SSL2Type = input(title="SSL2 / Continuation Type", type=input.string, defval="JMA", options=["SMA","EMA","DEMA","TEMA","WMA","MF","VAMA","TMA","HMA", "JMA","McGinley"])
+len2 = input(title="SSL 2 Length", defval=5)
+//
+SSL3Type = input(title="EXIT Type", type=input.string, defval="HMA", options=["DEMA","TEMA","LSMA","VAMA","TMA","HMA","JMA", "Kijun v2", "McGinley", "MF"])
+len3 = input(title="EXIT Length", defval=15)
+src = input(title="Source", type=input.source, defval=close)
+
+//
+tema(src, len) =>
+    ema1 = ema(src, len)
+    ema2 = ema(ema1, len)
+    ema3 = ema(ema2, len)
+    (3 * ema1) - (3 * ema2) + ema3
+kidiv = input(defval=1,maxval=4,  title="Kijun MOD Divider")
+
+jurik_phase = input(title="* Jurik (JMA) Only - Phase", type=input.integer, defval=3)
+jurik_power = input(title="* Jurik (JMA) Only - Power", type=input.integer, defval=1)
+volatility_lookback = input(10, title="* Volatility Adjusted (VAMA) Only - Volatility lookback length")
+//MF
+beta = input(0.8,minval=0,maxval=1,step=0.1,  title="Modular Filter, General Filter Only - Beta")
+feedback = input(false, title="Modular Filter Only - Feedback")
+z = input(0.5,title="Modular Filter Only - Feedback Weighting",step=0.1, minval=0, maxval=1)
+//EDSMA
+ssfLength = input(title="EDSMA - Super Smoother Filter Length", type=input.integer, minval=1, defval=20)
+ssfPoles = input(title="EDSMA - Super Smoother Filter Poles", type=input.integer, defval=2, options=[2, 3])
+
+//----
+
+//EDSMA
+get2PoleSSF(src, length) =>
+    PI = 2 * asin(1)
+    arg = sqrt(2) * PI / length
+    a1 = exp(-arg)
+    b1 = 2 * a1 * cos(arg)
+    c2 = b1
+    c3 = -pow(a1, 2)
+    c1 = 1 - c2 - c3
+    
+    ssf = 0.0
+    ssf := c1 * src + c2 * nz(ssf[1]) + c3 * nz(ssf[2])
+
+get3PoleSSF(src, length) =>
+    PI = 2 * asin(1)
+
+    arg = PI / length
+    a1 = exp(-arg)
+    b1 = 2 * a1 * cos(1.738 * arg)
+    c1 = pow(a1, 2)
+
+    coef2 = b1 + c1
+    coef3 = -(c1 + b1 * c1)
+    coef4 = pow(c1, 2)
+    coef1 = 1 - coef2 - coef3 - coef4
+
+    ssf = 0.0
+    ssf := coef1 * src + coef2 * nz(ssf[1]) + coef3 * nz(ssf[2]) + coef4 * nz(ssf[3])
+
+ma(type, src, len) =>
+    float result = 0
+    if type=="TMA"
+        result := sma(sma(src, ceil(len / 2)), floor(len / 2) + 1)
+    if type=="MF"
+        ts=0.,b=0.,c=0.,os=0.
+        //----
+        alpha = 2/(len+1)
+        a = feedback ? z*src + (1-z)*nz(ts[1],src) : src
+        //----
+        b := a > alpha*a+(1-alpha)*nz(b[1],a) ? a : alpha*a+(1-alpha)*nz(b[1],a)
+        c := a < alpha*a+(1-alpha)*nz(c[1],a) ? a : alpha*a+(1-alpha)*nz(c[1],a)
+        os := a == b ? 1 : a == c ? 0 : os[1]
+        //----
+        upper = beta*b+(1-beta)*c
+        lower = beta*c+(1-beta)*b 
+        ts := os*upper+(1-os)*lower
+        result := ts
+    if type=="LSMA"
+        result := linreg(src, len, 0)
+    if type=="SMA" // Simple
+        result := sma(src, len)
+    if type=="EMA" // Exponential
+        result := ema(src, len)
+    if type=="DEMA" // Double Exponential
+        e = ema(src, len)
+        result := 2 * e - ema(e, len)
+    if type=="TEMA" // Triple Exponential
+        e = ema(src, len)
+        result := 3 * (e - ema(e, len)) + ema(ema(e, len), len)
+    if type=="WMA" // Weighted
+        result := wma(src, len)
+    if type=="VAMA" // Volatility Adjusted
+        /// Copyright © 2019 to present, Joris Duyck (JD)
+        mid=ema(src,len)
+        dev=src-mid
+        vol_up=highest(dev,volatility_lookback)
+        vol_down=lowest(dev,volatility_lookback)
+        result := mid+avg(vol_up,vol_down)
+    if type=="HMA" // Hull
+        result := wma(2 * wma(src, len / 2) - wma(src, len), round(sqrt(len)))
+    if type=="JMA" // Jurik
+        /// Copyright © 2018 Alex Orekhov (everget)
+        /// Copyright © 2017 Jurik Research and Consulting.
+        phaseRatio = jurik_phase < -100 ? 0.5 : jurik_phase > 100 ? 2.5 : jurik_phase / 100 + 1.5
+        beta = 0.45 * (len - 1) / (0.45 * (len - 1) + 2)
+        alpha = pow(beta, jurik_power)
+        jma = 0.0
+        e0 = 0.0
+        e0 := (1 - alpha) * src + alpha * nz(e0[1])
+        e1 = 0.0
+        e1 := (src - e0) * (1 - beta) + beta * nz(e1[1])
+        e2 = 0.0
+        e2 := (e0 + phaseRatio * e1 - nz(jma[1])) * pow(1 - alpha, 2) + pow(alpha, 2) * nz(e2[1])
+        jma := e2 + nz(jma[1])
+        result := jma
+    if type=="Kijun v2"
+        kijun = avg(lowest(len), highest(len))//, (open + close)/2)
+        conversionLine = avg(lowest(len/kidiv), highest(len/kidiv))
+        delta = (kijun + conversionLine)/2
+        result :=delta
+    if type=="McGinley"
+        mg = 0.0
+        mg := na(mg[1]) ? ema(src, len) : mg[1] + (src - mg[1]) / (len * pow(src/mg[1], 4))
+        result :=mg
+    if type=="EDSMA"
+    
+        zeros = src - nz(src[2])
+        avgZeros = (zeros + zeros[1]) / 2
+        
+        // Ehlers Super Smoother Filter 
+        ssf = ssfPoles == 2
+             ? get2PoleSSF(avgZeros, ssfLength)
+             : get3PoleSSF(avgZeros, ssfLength)
+        
+        // Rescale filter in terms of Standard Deviations
+        stdev = stdev(ssf, len)
+        scaledFilter = stdev != 0
+             ? ssf / stdev
+             : 0
+        
+        alpha = 5 * abs(scaledFilter) / len
+        
+        edsma = 0.0
+        edsma := alpha * src + (1 - alpha) * nz(edsma[1])
+        result :=  edsma
+    result
+    
+///SSL 1 and SSL2
+emaHigh = ma(maType, high, len)
+emaLow = ma(maType, low, len)
+
+maHigh = ma(SSL2Type, high, len2)
+maLow = ma(SSL2Type, low, len2)
+
+///EXIT
+ExitHigh = ma(SSL3Type, high, len3)
+ExitLow = ma(SSL3Type, low, len3)
+
+///Keltner Baseline Channel
+BBMC = ma(maType, close, len)
+SSL_SIGNAL = crossover(close,BBMC) ? 1 : crossunder(close,BBMC) ? 2 : 0
+    
+    ///////////////////////////////
+    //  CREATE INDICATOR 3 HERE  //
+    ///////////////////////////////
+
+shortlen = input(5, minval=1, title = "Short Length")
+longlen = input(10, minval=1, title = "Long Length")
+short = ema(volume, shortlen)
+long = ema(volume, longlen)
+osc = 100 * (short - long) / long
+OSC_SIGNAL = osc > 0 ? 1 : 0 // 1 more than zero line , 0 less than zero line
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                      ====== POSITION AND SIGNAL ======                     //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////
+    //   CREATE SUMMARY SIGNALS  //
+    /////////////////////////////// 
+
+SUMMARY_SIGNALS = 0 // 1 long , 2 short , 0 none
+if (SSL_SIGNAL == 1 and OSC_SIGNAL == 0 and EMA_SIGNAL == 1 and OSC_SIGNAL[5] < 10)
+    SUMMARY_SIGNALS := 1
+
+else if (SSL_SIGNAL == 2 and OSC_SIGNAL == 0 and EMA_SIGNAL == 2 and OSC_SIGNAL[5] < 10)
+    SUMMARY_SIGNALS := 2
+    
+    ///////////////////////////////
+    // AMOUNT & SIZE CALCULATION //
+    ///////////////////////////////
+    
+TEST_SIZE = (strategy.initial_capital/EACHLOTS) * LEVERAGE
+TEST_CONTRACT_SIZE = abs(round(TEST_SIZE/close,3))
+plotchar(TEST_CONTRACT_SIZE,"TEST_CONTRACT_SIZE",char = " ")
+    
+    ///////////////////////////////
+    //   CREATE ENTRY POSITION   //
+    ///////////////////////////////    
+    
+if (SUMMARY_SIGNALS == 1) and strategy.position_size <= 0 and inDateRange 
+    strategy.entry(id="LONG",long=true,qty=TEST_CONTRACT_SIZE, comment = "OPEN LONG")
+
+if (SUMMARY_SIGNALS == 2) and strategy.position_size >= 0 and inDateRange 
+    if (LONG_ONLY)
+        strategy.close_all(comment = "TPSL LONG")
+    else
+        strategy.entry(id="SHORT",long=false,qty=TEST_CONTRACT_SIZE, comment = "OPEN SHORT")
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                      ==== TAKE-PROFITS STOPLOSS  ===                       //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+SL_METHOD = input(title="SL_METHOD", defval="SL@PREVIOUS_LOW", options=["SL@PREVIOUS_LOW", "SL@LEVERAGE", "SL@ATR"], group = "SL CONFIG")
+
+    /////////////////////////
+    //  PLOW CALCULATION   //
+    /////////////////////////
+
+PREVIOUS_SL_LOOKBACK = input(title="LOWEST_SL_LOOKBACK", defval=52, minval=5 , group = "SL@PREVIOUS HL CONFIG")
+PREVIOUS_SL_RR = input(title="PREVIOUS_SL_RR", defval=20, minval=0.5 , group = "SL@PREVIOUS HL CONFIG")
+
+PLowLongStopPrice = lowest(low,PREVIOUS_SL_LOOKBACK)
+PhighShortStopPrice = highest(high,PREVIOUS_SL_LOOKBACK)
+
+if strategy.position_size > 0
+    PLowLongStopPrice := min(nz(PLowLongStopPrice[1]),PLowLongStopPrice)
+if strategy.position_size < 0
+    PhighShortStopPrice := max(nz(PhighShortStopPrice[1]),PhighShortStopPrice)
+
+    /////////////////////////
+    //  ATR CALCULATION   ///
+    /////////////////////////
+
+ATR_LENGTH = input(title="ATR_LENGTH", defval=10, minval=1 , group = "SL@ATR CONFIG")
+ATR_SMOOTHING = input(title="ATR_SMOOTHING", defval="RMA", options=["RMA", "SMA", "EMA", "WMA"] , group = "SL@ATR CONFIG")
+ATR_MUL_SL = input( title = "ATR_MUL_SL" , type = input.float , defval = 6.5 , group = "SL@ATR CONFIG")
+ATR_MUL_TP = input( title = "ATR_MUL_TP" , type = input.float , defval = 7.5 , group = "SL@ATR CONFIG")
+
+	
+ATR_VALUE = ma_function(tr(true),ATR_LENGTH)
+ATR_VALUE := strategy.position_size == 0 ? ATR_VALUE : ATR_VALUE[1]
+
+    /////////////////////////////
+    //  LEVERAGE CALCULATION   //
+    /////////////////////////////
+
+LeveragelongStopPrice  = (strategy.position_avg_price * (1 - (1/LEVERAGE))) //+ Redundant
+LeverageshortStopPrice = (strategy.position_avg_price * (1 + (1/LEVERAGE))) //- Redundant
+
+RR_LONG_TP = input( title = "RR_LONG_TP" , type = input.float , defval = 11 , group = "SL@LEVERAGE CONFIG")
+RR_SHORT_TP = input( title = "RR_SHORT_TP" , type = input.float , defval = 11 , group = "SL@LEVERAGE CONFIG")
+    
+    //////////////////////////////
+    //  CREATE TP SL POSITION   //
+    //////////////////////////////
+
+
+LongSLsum = 0.0
+ShortSLsum = 0.0
+LongTPsum = 0.0
+ShortTPsum = 0.0
+
+if SL_METHOD == "SL@PREVIOUS_LOW"
+    LongSLsum := max(PLowLongStopPrice,LeveragelongStopPrice)
+    ShortSLsum := min(PhighShortStopPrice,LeverageshortStopPrice)
+    
+    Ldiff = abs(strategy.position_avg_price - PLowLongStopPrice)
+    Sdiff = abs(strategy.position_avg_price - PhighShortStopPrice)
+    
+    LongTPsum := strategy.position_avg_price + Ldiff * PREVIOUS_SL_RR
+    ShortTPsum := strategy.position_avg_price - Sdiff * PREVIOUS_SL_RR
+
+else if SL_METHOD == "SL@LEVERAGE"
+    LongSLsum := LeveragelongStopPrice
+    ShortSLsum := LeverageshortStopPrice
+    
+    Ldiff = abs(strategy.position_avg_price - LeveragelongStopPrice)
+    Sdiff = abs(strategy.position_avg_price - LeverageshortStopPrice)
+    
+    LongTPsum := strategy.position_avg_price + RR_LONG_TP * Ldiff
+    ShortTPsum := strategy.position_avg_price - Sdiff * RR_SHORT_TP
+
+else if SL_METHOD == "SL@ATR"
+    LongSLsum := max(strategy.position_avg_price - (ATR_VALUE * ATR_MUL_SL),LeveragelongStopPrice)
+    ShortSLsum := min(strategy.position_avg_price + (ATR_VALUE * ATR_MUL_SL),LeverageshortStopPrice)
+    
+    LongTPsum := strategy.position_avg_price + (ATR_VALUE * ATR_MUL_TP)
+    ShortTPsum := strategy.position_avg_price - (ATR_VALUE * ATR_MUL_TP)
+
+
+if (strategy.position_size > 0 and inDateRange ) // LONG
+    strategy.exit(id="XL STP",from_entry="LONG", stop=LongSLsum ,limit = LongTPsum  , comment = "TPSL LONG")
+
+if (strategy.position_size < 0 and inDateRange ) // SHORT
+    strategy.exit(id="XL STP",from_entry="SHORT", stop=ShortSLsum ,limit = ShortTPsum , comment = "TPSL SHORT")
+
+    //////////////////////////////
+    //    PLOT FOR TPSL LINE    //
+    //////////////////////////////
+plotchar(title="ATR VALUE" , series = ATR_VALUE , char='')
+plotchar(title="(ATR_VALUE * ATR_MUL_SL)" , series = ATR_VALUE * ATR_MUL_SL , char='')
+plotchar(title="(ATR_VALUE * ATR_MUL_TP)" , series = ATR_VALUE * ATR_MUL_TP , char='')
+
+plot(series=(strategy.position_size > 0) ? LongSLsum : na,
+     style=plot.style_circles, color=color.red, linewidth=1,
+     title="LongSLsum") 
+
+     
+plot(series=(strategy.position_size < 0) ? ShortSLsum : na,
+     style=plot.style_circles, color=color.red, linewidth=1,
+     title="ShortSLsum") 
+
+plot(series=(strategy.position_size > 0) ? LongTPsum : na,
+     style=plot.style_circles, color=color.green, linewidth=1,
+     title="LongTPsum") 
+
+     
+plot(series=(strategy.position_size < 0) ? ShortTPsum : na,
+     style=plot.style_circles, color=color.green, linewidth=1,
+     title="ShortTPsum") 
+     
+
+
+l = label.new(x=time + 1 * (time - time[1]) , y=high , xloc=xloc.bar_time , style= true ? label.style_label_lower_left : label.style_label_upper_left , yloc = yloc.price , color=#14ff3c66 , textcolor = color.white , size = size.small , text =  "------------------------------------------\n QUICK STARTER TEMPLATE [PYBOTT] \n------------------------------------------\n TOTAL PROFITS :  " + tostring(round(strategy.netprofit,2)) +"\n\n CURRENT EQUITY :  "+ tostring(round(strategy.equity,2)) +"\n\n WIN/LOSE :  "+ tostring(round(strategy.wintrades,2)) + "/" + tostring(round(strategy.losstrades,2)) + "\n\n (สรุปผลการเทรดช่วงเวลา)\n"+TEXT_DATE)
+
+label.delete(l[1])
