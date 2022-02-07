@@ -466,8 +466,8 @@ LongSL = strategy.position_avg_price - ATR_VALUE * ATR_MUL_SL
 ShortTP = strategy.position_avg_price - ATR_VALUE * ATR_MUL_TP
 ShortSL = strategy.position_avg_price + ATR_VALUE * ATR_MUL_SL
 
-LongSLsum =  LongSL < LeveragelongStopPrice ? LeveragelongStopPrice : LongSL
-ShortSLsum = ShortSL > LeverageshortStopPrice ? LeverageshortStopPrice : ShortSL
+LongSLsum =  LongSL > LeveragelongStopPrice ? LeveragelongStopPrice : LongSL
+ShortSLsum = ShortSL < LeverageshortStopPrice ? LeverageshortStopPrice : ShortSL
 
 if TP_METHOD == "PREVIOUS_LOW"
     LongSLsum := PLowLongStopPrice
