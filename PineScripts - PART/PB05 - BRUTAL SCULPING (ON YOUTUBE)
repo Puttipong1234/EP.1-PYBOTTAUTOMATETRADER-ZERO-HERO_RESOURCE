@@ -295,6 +295,8 @@ else if (SSL_SIGNAL == 2 and OSC_SIGNAL == 0 and EMA_SIGNAL == 2 and OSC_SIGNAL[
     
 TEST_SIZE = (strategy.initial_capital/EACHLOTS) * LEVERAGE
 TEST_CONTRACT_SIZE = abs(round(TEST_SIZE/close,3))
+// FIX wrong position size return 
+TEST_CONTRACT_SIZE := strategy.position_size != 0 ? TEST_CONTRACT_SIZE[1] : TEST_CONTRACT_SIZE
 plotchar(TEST_CONTRACT_SIZE,"TEST_CONTRACT_SIZE",char = " ")
     
     ///////////////////////////////
