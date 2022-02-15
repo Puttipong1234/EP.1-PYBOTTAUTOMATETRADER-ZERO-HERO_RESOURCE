@@ -132,6 +132,8 @@ SUMMARY_SIGNALS = (MMZ_SIGNAL == 1 and RSI_SIGNAL == 1 and EMA_SIGNAL == 1) ? 1 
     
 TEST_SIZE = (strategy.initial_capital/EACHLOTS) * LEVERAGE
 TEST_CONTRACT_SIZE = abs(round(TEST_SIZE/close,3))
+// FIX wrong position size return 
+TEST_CONTRACT_SIZE := strategy.position_size != 0 ? TEST_CONTRACT_SIZE[1] : TEST_CONTRACT_SIZE
 plotchar(TEST_CONTRACT_SIZE,"TEST_CONTRACT_SIZE",char = " ")
     
     ///////////////////////////////
