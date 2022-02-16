@@ -418,9 +418,9 @@ LEVERAGE = input( defval = 20 , title = "Leverage" , type = input.integer , grou
 LONG_ONLY = input(false, "LONG_ONLY ?", group = "POSITION CONFIG") 
 
 TEST_SIZE = (strategy.initial_capital/EACHLOTS) * LEVERAGE
+TEST_CONTRACT_SIZE = round(TEST_SIZE/close,3)
 // FIX wrong position size return 
 TEST_CONTRACT_SIZE := strategy.position_size != 0 ? TEST_CONTRACT_SIZE[1] : TEST_CONTRACT_SIZE
-TEST_CONTRACT_SIZE = round(TEST_SIZE/close,3)
 plotchar(TEST_CONTRACT_SIZE,"TEST_CONTRACT_SIZE",char = " ")
 
 if (SUMMARY_SIGNALS == 200) and strategy.position_size <= 0 and inDateRange 
