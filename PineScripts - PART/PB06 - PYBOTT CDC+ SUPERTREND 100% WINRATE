@@ -236,13 +236,13 @@ else if SL_METHOD == "SL@ATR"
 
 
 if (strategy.position_size > 0 and inDateRange ) // LONG
-    //strategy.exit(id="XL STP",from_entry="LONG", stop=LongSLsum ,limit = LongTPsum  , comment = "TPSL LONG")
+    strategy.exit(id="XL STP",from_entry="LONG", stop=LongSLsum ,limit = LongTPsum  , comment = "TPSL LONG")
     if (SUMMARY_TPSL_SIGNALS == 1)
         strategy.close_all(comment = "TPSL LONG")
     
 
 if (strategy.position_size < 0 and inDateRange ) // SHORT
-    //strategy.exit(id="XL STP",from_entry="SHORT", stop=ShortSLsum ,limit = ShortTPsum , comment = "TPSL SHORT")
+    strategy.exit(id="XL STP",from_entry="SHORT", stop=ShortSLsum ,limit = ShortTPsum , comment = "TPSL SHORT")
     if (SUMMARY_TPSL_SIGNALS == 2)
         strategy.close_all(comment = "TPSL SHORT")
 
